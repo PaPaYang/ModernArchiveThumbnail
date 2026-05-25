@@ -1,0 +1,31 @@
+name: Build Thumbnail DLL
+
+on:
+  push:
+    branches: [ "main" ] # main 브랜치에 코드가 올라올 때마다 실행
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: windows-latest # 윈도우 환경에서 빌드
+
+    steps:
+    - name: 저장소 코드 가져오기
+      uses: actions/checkout@v4
+
+    - name: MSBuild 환경 설정
+      uses: microsoft/setup-msbuild@v2
+
+    # (주의) vcpkg나 NuGet으로 libarchive를 설치했다면 이 단계에서 패키지 복원이 필요할 수 있습니다.
+
+    - name: 프로젝트 빌드 (Release, x64 기준)
+      # ★주의: 아래 "본인의솔루션이름.sln" 부분을 실제 프로젝트의 .sln 파일 이름으로 변경하세요!
+      run: msbuild "본인의솔루션이름.sln" /p:Configuration=Release /p:Platform=x64
+
+    - name: 빌드된 DLL 파일 저장 (Artifacts)
+      uses: actions/upload-artifact@v4
+      with:
+        name: Compiled-DLL
+        # 프로젝트 설정에 따라 DLL이 생성되는 경로가 다를 수 있으니 확인이 필요합니다.
+        path: x64/Release/*.dll
