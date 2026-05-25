@@ -16,29 +16,31 @@ jobs:
     - name: Add MSBuild to PATH
       uses: microsoft/setup-msbuild@v2
 
-    # 1. vcpkg를 이용해 libarchive와 그 압축 종속성들을 소스로부터 빌드합니다.
+    # [추가됨] NSIS 설치
+    - name: Install NSIS
+      run: choco install nsis --no-progress
+
     - name: Build dependencies with vcpkg
       run: |
         vcpkg install libarchive[bzip2,lz4,lzma,zstd,crypto]:x64-windows
         vcpkg integrate install
       shell: cmd
 
-    # 2. 내 프로젝트 빌드 (vcpkg integrate install 덕분에 외부 라이브러리가 자동 연결됨)
     - name: Build C++ Solution
       run: msbuild ModernArchiveThumbnail.sln /p:Configuration=Release /p:Platform=x64
 
-    # 3. vcpkg가 빌드해 낸 외부 DLL들과 내 프로젝트 DLL을 루트 폴더로 모읍니다.
     - name: Gather all DLLs for NSIS
       run: |
         copy "C:\vcpkg\installed\x64-windows\bin\*.dll" .
         copy "x64\Release\ModernArchiveThumbnail.dll" .
       shell: cmd
 
-    # 4. NSIS 스크립트 실행 (*.dll 명령어로 방금 모은 모든 DLL을 캡슐화)
+    # [수정됨] 설치된 NSIS의 절대 경로를 사용하여 실행
     - name: Build Installer (EXE) with NSIS
-      run: makensis ModernArchiveThumbnail.nsi
+      run: |
+        "C:\Program Files (x86)\NSIS\makensis.exe" ModernArchiveThumbnail.nsi
+      shell: cmd
 
-    # 5. 완성된 설치 파일 제공
     - name: Upload Installer Artifact
       uses: actions/upload-artifact@v4
       with:
