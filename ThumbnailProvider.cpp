@@ -91,11 +91,140 @@ HRESULT CreateHBITMAPFromData(const vector<BYTE>& buf, UINT cx, HBITMAP* phbmp) 
     ThumbnailRawPtr<IWICBitmapFrameDecode> spFrame;
     if (FAILED(spDec->GetFrame(0, &spFrame)) || !spFrame) return E_FAIL;
 
-    UINT w, h; spFrame->GetSize(&w, &h);
+    UINT w, h; spFrame->GetSize(&w, h);
     if (w == 0 || h == 0) return E_FAIL;
     double r = (double)w / h;
     if (r < MIN_ASPECT_RATIO || r > MAX_ASPECT_RATIO) return S_FALSE;
 
-    UINT tw = cx, th = max((UINT)((double)h * cx / w), 1U);
+    UINT th = (UINT)((double)h * cx / w);
+    if (th < 1) th = 1;
+    UINT tw = cx;
+    
     ThumbnailRawPtr<IWICBitmapScaler> spScaler;
-    if (FAILED(GetWIC()->CreateBitmapScaler(&spScaler)) || !spScaler
+    if (FAILED(GetWIC()->CreateBitmapScaler(&spScaler)) || !spScaler) return E_FAIL;
+    spScaler->Initialize(spFrame.Get(), tw, th, WICBitmapInterpolationModeFant);
+
+    ThumbnailRawPtr<IWICFormatConverter> spConv;
+    if (FAILED(GetWIC()->CreateFormatConverter(&spConv)) || !spConv) return E_FAIL;
+    spConv->Initialize(spScaler.Get(), GUID_WICPixelFormat32bppBGRA, WICBitmapDitherTypeNone, NULL, 0.0, WICBitmapPaletteTypeCustom);
+
+    BITMAPINFO bmi = { 0 };
+    bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+    bmi.bmiHeader.biWidth = tw;
+    bmi.bmiHeader.biHeight = -(long)th;
+    bmi.bmiHeader.biPlanes = 1;
+    bmi.bmiHeader.biBitCount = 32;
+    bmi.bmiHeader.biCompression = BI_RGB;
+
+    void* dstPtr = nullptr;
+    *phbmp = CreateDIBSection(NULL, &bmi, DIB_RGB_COLORS, &dstPtr, NULL, 0);
+    if (*phbmp && dstPtr) {
+        UINT stride = tw * 4;
+        if (FAILED(spConv->CopyPixels(NULL, stride, stride * th, (BYTE*)dstPtr))) {
+            DeleteObject(*phbmp); *phbmp = NULL; return E_FAIL;
+        }
+    }
+    return *phbmp ? S_OK : E_FAIL;
+}
+
+struct StreamContext { IStream* pStream; BYTE buffer[65536]; };
+
+la_ssize_t StreamRead(struct archive* a, void* cd, const void** b) {
+    StreamContext* ctx = (StreamContext*)cd; ULONG r = 0;
+    if (FAILED(ctx->pStream->Read(ctx->buffer, sizeof(ctx->buffer), &r))) return -1;
+    *b = ctx->buffer; return (la_ssize_t)r;
+}
+
+la_int64_t StreamSeek(struct archive* a, void* cd, la_int64_t req, int w) {
+    StreamContext* ctx = (StreamContext*)cd; LARGE_INTEGER li; li.QuadPart = req; ULARGE_INTEGER np;
+    DWORD m = (w == SEEK_SET) ? 0 : (w == SEEK_CUR ? 1 : 2);
+    ctx->pStream->Seek(li, m, &np); return (la_int64_t)np.QuadPart;
+}
+
+STDMETHODIMP CThumbnailProvider::Initialize(IStream* pStream, DWORD grfMode) {
+    m_spStream = pStream; return S_OK;
+}
+
+HRESULT CThumbnailProvider::GetThumbnailImpl(UINT cx, HBITMAP* phbmp, WTS_ALPHATYPE* pdwAlpha) {
+    struct archive* a = archive_read_new(); if (!a) return E_FAIL;
+    archive_read_support_format_all(a); archive_read_support_filter_all(a);
+    archive_read_set_seek_callback(a, StreamSeek);
+    StreamContext ctx = { m_spStream.Get() };
+    LARGE_INTEGER liZero = { 0 }; m_spStream->Seek(liZero, 0, NULL);
+    if (archive_read_open(a, &ctx, NULL, StreamRead, NULL) != ARCHIVE_OK) { archive_read_free(a); return E_FAIL; }
+
+    struct archive_entry* entry;
+    ULONGLONG start = GetTickCount64(); int scanCount = 0;
+    vector<BYTE> bestData;
+    int bestP = 1001, minN = 1000001;
+    long long maxSz = -1;
+
+    while (archive_read_next_header(a, &entry) == ARCHIVE_OK) {
+        if (GetTickCount64() - start > SCAN_TIMEOUT_MS || ++scanCount > MAX_SCAN_FILES) break;
+        if (archive_entry_filetype(entry) != AE_IFREG) { archive_read_data_skip(a); continue; }
+
+        const char* p = archive_entry_pathname(entry); if (!p) { archive_read_data_skip(a); continue; }
+        string s = p; transform(s.begin(), s.end(), s.begin(), ::tolower);
+        
+        auto ends = [&](const string& t, const string& e) { return t.size() >= e.size() && t.compare(t.size() - e.size(), e.size(), e) == 0; };
+
+        if (!(ends(s, ".jpg") || ends(s, ".jpeg") || ends(s, ".png") || ends(s, ".webp") || ends(s, ".jfif") ||
+            ends(s, ".gif") || ends(s, ".bmp") || ends(s, ".heic") || ends(s, ".heif") || ends(s, ".avif") ||
+            ends(s, ".tiff") || ends(s, ".tif") || ends(s, ".ico") || ends(s, ".jpe"))) {
+            archive_read_data_skip(a); continue;
+        }
+
+        long long sz = archive_entry_size(entry);
+        if (sz < 1024 || sz > MAX_FILE_SIZE) { archive_read_data_skip(a); continue; }
+
+        int d = GetDepth(s);
+        
+        if (d > 0) {
+            archive_read_data_skip(a);
+            continue;
+        }
+
+        string fn = s.substr(s.find_last_of("/\\") + 1);
+        int pr = GetFilePriority(fn), n = GetFirstNumberFromUtf8(fn);
+
+        bool better = false;
+        if (pr < bestP) better = true;
+        else if (pr == bestP) {
+            if (n < minN) better = true;
+            else if (n == minN && sz > maxSz) better = true;
+        }
+
+        if (better) {
+            vector<BYTE> tmp(sz);
+            if (archive_read_data(a, tmp.data(), (size_t)sz) == (la_ssize_t)sz) {
+                if (pr == 1) {
+                    HRESULT hrTest = CreateHBITMAPFromData(tmp, cx, phbmp);
+                    if (SUCCEEDED(hrTest)) { archive_read_free(a); return hrTest; }
+                }
+                bestData = move(tmp); bestP = pr; minN = n; maxSz = sz;
+            }
+        }
+        else { archive_read_data_skip(a); }
+    }
+
+    archive_read_free(a);
+    return bestData.empty() ? E_FAIL : CreateHBITMAPFromData(bestData, cx, phbmp);
+}
+
+STDMETHODIMP CThumbnailProvider::GetThumbnail(UINT cx, HBITMAP* phbmp, WTS_ALPHATYPE* pdwAlpha) {
+    if (!m_spStream || !phbmp || cx == 0 || cx > 4096) return E_INVALIDARG;
+    if (pdwAlpha) *pdwAlpha = WTSAT_ARGB;
+
+    HRESULT hr = E_FAIL;
+    HRESULT hrCo = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
+    bool needUninit = (hrCo == S_OK || hrCo == S_FALSE);
+
+    __try {
+        hr = GetThumbnailImpl(cx, phbmp, pdwAlpha);
+    }
+    __finally { 
+        if (needUninit) CoUninitialize(); 
+    }
+    
+    return hr;
+}
