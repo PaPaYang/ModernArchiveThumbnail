@@ -91,7 +91,8 @@ HRESULT CreateHBITMAPFromData(const vector<BYTE>& buf, UINT cx, HBITMAP* phbmp) 
     ThumbnailRawPtr<IWICBitmapFrameDecode> spFrame;
     if (FAILED(spDec->GetFrame(0, &spFrame)) || !spFrame) return E_FAIL;
 
-    UINT w, h; spFrame->GetSize(&w, h);
+    // [수정됨] &h 로 오타 수정 완료
+    UINT w, h; spFrame->GetSize(&w, &h);
     if (w == 0 || h == 0) return E_FAIL;
     double r = (double)w / h;
     if (r < MIN_ASPECT_RATIO || r > MAX_ASPECT_RATIO) return S_FALSE;
