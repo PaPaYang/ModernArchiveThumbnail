@@ -213,39 +213,16 @@ STDMETHODIMP CThumbnailProvider::GetThumbnail(UINT cx, HBITMAP* phbmp, WTS_ALPHA
     __try {
         __try {
             hr = GetThumbnailImpl(cx, phbmp, pdwAlpha);
+            
+            // 변경된 부분: 이미지가 없어서 실패했을 경우, 글자를 그려넣지 않고 
+            // 윈도우 탐색기가 기본 아이콘을 쓰도록 실패 코드를 반환합니다.
             if (FAILED(hr)) {
-                BITMAPINFO bmi = { 0 };
-                bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-                bmi.bmiHeader.biWidth = cx; bmi.bmiHeader.biHeight = -(long)cx;
-                bmi.bmiHeader.biPlanes = 1; bmi.bmiHeader.biBitCount = 32;
-                bmi.bmiHeader.biCompression = BI_RGB;
-                void* pBits = nullptr;
-                *phbmp = CreateDIBSection(NULL, &bmi, DIB_RGB_COLORS, &pBits, NULL, 0);
-                if (*phbmp && pBits) {
-                    HDC hdc = CreateCompatibleDC(NULL);
-                    if (hdc) {
-                        HBITMAP hOld = (HBITMAP)SelectObject(hdc, *phbmp);
-                        RECT rc = { 0, 0, (long)cx, (long)cx };
-                        HBRUSH hBr = CreateSolidBrush(RGB(242, 242, 247));
-                        FillRect(hdc, &rc, hBr); DeleteObject(hBr);
-                        SetTextColor(hdc, RGB(110, 110, 120)); SetBkMode(hdc, TRANSPARENT);
-                        int fSz = max(MulDiv(cx, 16, 100), 12);
-                        HFONT hFont = CreateFontW(fSz, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Segoe UI");
-                        if (hFont) {
-                            HFONT hOldF = (HFONT)SelectObject(hdc, hFont);
-                            DrawTextW(hdc, L"ARCHIVE", -1, &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
-                            SelectObject(hdc, hOldF); DeleteObject(hFont);
-                        }
-                        SelectObject(hdc, hOld);
-                        DeleteDC(hdc);
-                        hr = S_OK;
-                    }
-                }
+                hr = WTS_E_FAILEDEXTRACTION; 
             }
         }
         __except (EXCEPTION_EXECUTE_HANDLER) {
             if (*phbmp) { DeleteObject(*phbmp); *phbmp = NULL; }
-            hr = E_FAIL;
+            hr = WTS_E_FAILEDEXTRACTION;
         }
     }
     __finally {
