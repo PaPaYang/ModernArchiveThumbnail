@@ -21,8 +21,11 @@ jobs:
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
 
-      - name: Restore NuGet Packages
-        run: nuget restore
+      - name: Install libarchive via vcpkg
+        # 깃허브 서버에 64비트용 libarchive를 설치하고 MSBuild에 자동 연결합니다.
+        run: |
+          vcpkg install libarchive:x64-windows
+          vcpkg integrate install
 
       - name: Find and Build Solution
         run: |
