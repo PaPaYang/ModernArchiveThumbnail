@@ -16,7 +16,6 @@ jobs:
     - name: Add MSBuild to PATH
       uses: microsoft/setup-msbuild@v2
 
-    # [추가됨] NSIS 설치
     - name: Install NSIS
       run: choco install nsis --no-progress
 
@@ -26,8 +25,9 @@ jobs:
         vcpkg integrate install
       shell: cmd
 
+    # [수정됨] 명령어 끝에 /p:UseOfAtl=Static 옵션이 추가되었습니다.
     - name: Build C++ Solution
-      run: msbuild ModernArchiveThumbnail.sln /p:Configuration=Release /p:Platform=x64
+      run: msbuild ModernArchiveThumbnail.sln /p:Configuration=Release /p:Platform=x64 /p:UseOfAtl=Static
 
     - name: Gather all DLLs for NSIS
       run: |
@@ -35,7 +35,6 @@ jobs:
         copy "x64\Release\ModernArchiveThumbnail.dll" .
       shell: cmd
 
-    # [수정됨] 설치된 NSIS의 절대 경로를 사용하여 실행
     - name: Build Installer (EXE) with NSIS
       run: |
         "C:\Program Files (x86)\NSIS\makensis.exe" ModernArchiveThumbnail.nsi
