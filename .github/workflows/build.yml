@@ -13,6 +13,15 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    # [추가됨] 깃허브 서버에 누락된 Visual C++ ATL 컴포넌트를 강제로 설치합니다.
+    - name: Install C++ ATL Component
+      run: |
+        $vsPath = (vswhere -latest -property installationPath)
+        $installer = "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vs_installer.exe"
+        Write-Host "Installing ATL into $vsPath..."
+        Start-Process -FilePath $installer -ArgumentList "modify --installPath `"$vsPath`" --add Microsoft.VisualStudio.Component.VC.ATL --quiet --norestart" -Wait
+      shell: powershell
+
     - name: Add MSBuild to PATH
       uses: microsoft/setup-msbuild@v2
 
