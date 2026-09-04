@@ -25,7 +25,7 @@ class ATL_NO_VTABLE CThumbnailProvider :
 public:
     CThumbnailProvider() {}
 
-    DECLARE_REGISTRY_RESOURCEID(106)
+    DECLARE_REGISTRY_RESOURCEID()
 
     BEGIN_COM_MAP(CThumbnailProvider)
         COM_INTERFACE_ENTRY(IInitializeWithStream)
