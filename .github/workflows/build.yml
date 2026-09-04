@@ -13,6 +13,10 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    # [추가됨] C++ 및 ATL 헤더 파일 경로를 완벽하게 연결해 주는 플러그인
+    - name: Setup MSVC Developer Command Prompt
+      uses: ilammy/msvc-dev-cmd@v1
+
     - name: Add MSBuild to PATH
       uses: microsoft/setup-msbuild@v2
 
@@ -25,7 +29,6 @@ jobs:
         vcpkg integrate install
       shell: cmd
 
-    # [수정됨] 명령어 끝에 /p:UseOfAtl=Static 옵션이 추가되었습니다.
     - name: Build C++ Solution
       run: msbuild ModernArchiveThumbnail.sln /p:Configuration=Release /p:Platform=x64 /p:UseOfAtl=Static
 
