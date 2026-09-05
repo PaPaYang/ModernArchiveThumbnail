@@ -13,8 +13,9 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    # [수정됨] 존재하지 않는 v4 대신, 기존에 잘 작동하던 v2로 원상 복구했습니다.
     - name: Add MSBuild to PATH
-      uses: microsoft/setup-msbuild@v4
+      uses: microsoft/setup-msbuild@v2
 
     - name: Install NSIS
       run: choco install nsis --no-progress
