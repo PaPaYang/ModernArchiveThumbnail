@@ -13,14 +13,6 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Install Visual C++ ATL
-      run: |
-        $vsPath = (vswhere -latest -property installationPath)
-        $installer = "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vs_installer.exe"
-        Write-Host "Installing ATL into $vsPath..."
-        Start-Process -FilePath $installer -ArgumentList "modify --installPath `"$vsPath`" --add Microsoft.VisualStudio.Component.VC.ATL --quiet --norestart" -Wait
-      shell: powershell
-
     - name: Setup MSVC
       uses: ilammy/msvc-dev-cmd@v1
 
@@ -33,8 +25,9 @@ jobs:
         vcpkg integrate install
       shell: cmd
 
+    # MSBuild 명령줄 자체에 ATL 정적 링크 옵션을 강제 주입
     - name: Build C++ Solution
-      run: msbuild ModernArchiveThumbnail.sln /p:Configuration=Release /p:Platform=x64 /p:VcpkgTriplet=x64-windows-static
+      run: msbuild ModernArchiveThumbnail.sln /p:Configuration=Release /p:Platform=x64 /p:VcpkgTriplet=x64-windows-static /p:UseOfAtl=Static
       shell: cmd
 
     - name: Gather DLL for NSIS
