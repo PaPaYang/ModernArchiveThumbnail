@@ -1,31 +1,48 @@
 #pragma once
-#include <windows.h>
+#include <shobjidl.h>
 #include <thumbcache.h>
+#include <atlbase.h>
+#include <atlcom.h>
 #include <wrl/client.h>
-#include <string>
-#include <vector>
+#include "ModernArchiveThumbnail_h.h" 
 
-using Microsoft::WRL::ComPtr;
+#define THUMBNAIL_VERSION L"1.1.2"
 
-class CThumbnailProvider : public IInitializeWithStream, public IThumbnailProvider {
+#ifdef _DEBUG
+#define LOG_DEBUG(msg) OutputDebugStringW(L"[Thumbnail] " msg L"\n")
+#else
+#define LOG_DEBUG(msg)
+#endif
+
+using namespace Microsoft::WRL;
+
+class ATL_NO_VTABLE CThumbnailProvider :
+    public ATL::CComObjectRootEx<ATL::CComSingleThreadModel>,
+    public ATL::CComCoClass<CThumbnailProvider, &CLSID_ThumbnailProvider>,
+    public IInitializeWithStream,
+    public IThumbnailProvider
+{
 public:
-    CThumbnailProvider();
-    ~CThumbnailProvider();
+    CThumbnailProvider() {}
 
-    // IUnknown
-    IFACEMETHODIMP QueryInterface(REFIID riid, void** ppv);
-    IFACEMETHODIMP_(ULONG) AddRef();
-    IFACEMETHODIMP_(ULONG) Release();
+    DECLARE_REGISTRY_RESOURCEID(106)
 
-    // IInitializeWithStream
-    IFACEMETHODIMP Initialize(IStream* pStream, DWORD grfMode);
+    BEGIN_COM_MAP(CThumbnailProvider)
+        COM_INTERFACE_ENTRY(IInitializeWithStream)
+        COM_INTERFACE_ENTRY(IThumbnailProvider)
+    END_COM_MAP()
 
-    // IThumbnailProvider
-    IFACEMETHODIMP GetThumbnail(UINT cx, HBITMAP* phbmp, WTS_ALPHATYPE* pdwAlpha);
+    DECLARE_PROTECT_FINAL_CONSTRUCT()
+
+    HRESULT FinalConstruct() { return S_OK; }
+    void FinalRelease() {}
+
+    STDMETHODIMP Initialize(IStream* pStream, DWORD grfMode);
+    STDMETHODIMP GetThumbnail(UINT cx, HBITMAP* phbmp, WTS_ALPHATYPE* pdwAlpha);
 
 private:
-    long m_cRef;
     ComPtr<IStream> m_spStream;
-
     HRESULT GetThumbnailImpl(UINT cx, HBITMAP* phbmp, WTS_ALPHATYPE* pdwAlpha);
 };
+
+OBJECT_ENTRY_AUTO(__uuidof(ThumbnailProvider), CThumbnailProvider)
