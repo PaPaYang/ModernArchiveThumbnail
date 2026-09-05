@@ -21,6 +21,13 @@ jobs:
     - name: Install NSIS
       run: choco install nsis --no-progress
 
+    # [핵심] 빌드 직전 PowerShell을 이용해 .vcxproj 파일 내부에 ATL 설정을 강제로 주입합니다.
+    - name: Patch vcxproj for ATL
+      run: |
+        $path = "ModernArchiveThumbnail.vcxproj"
+        (Get-Content $path) -replace '<CharacterSet>Unicode</CharacterSet>', "<CharacterSet>Unicode</CharacterSet>`n    <UseOfAtl>Static</UseOfAtl>" | Set-Content $path
+      shell: powershell
+
     - name: Build dependencies with vcpkg
       run: |
         vcpkg install libarchive[bzip2,lz4,lzma,zstd,crypto]:x64-windows
@@ -28,10 +35,7 @@ jobs:
       shell: cmd
 
     - name: Build C++ Solution
-      run: |
-        set INCLUDE=%VCToolsInstallDir%atlmfc\include;%INCLUDE%
-        set LIB=%VCToolsInstallDir%atlmfc\lib\x64;%LIB%
-        msbuild ModernArchiveThumbnail.sln /p:Configuration=Release /p:Platform=x64 /p:UseOfAtl=Static
+      run: msbuild ModernArchiveThumbnail.sln /p:Configuration=Release /p:Platform=x64
       shell: cmd
 
     - name: Gather all DLLs for NSIS
