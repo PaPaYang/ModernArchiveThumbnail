@@ -163,7 +163,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;UNICODE;_UNICODE;_WINDLL</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;UNICODE;_UNICODE;_WINDLL</PreprocessorDefinitions>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <SDLCheck>true</SDLCheck>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -201,7 +201,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
-      <PreprocessorDefinitions>WIN32;_NDBUG;_WINDOWS;_USRDLL;UNICODE;_UNICODE;_WINDLL</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;UNICODE;_UNICODE;_WINDLL</PreprocessorDefinitions>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <SDLCheck>true</SDLCheck>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -220,7 +220,7 @@
       <TypeLibraryName>$(IntDir)ModernArchiveThumbnail.tlb</TypeLibraryName>
       <DllDataFileName />
       <ValidateAllParameters>true</ValidateAllParameters>
-      <AdditionalIncludeDirectories>$(IntDir);%(AdditionalIncludeDirectories</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(IntDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </Midl>
     <ResourceCompile>
       <Culture>0x0412</Culture>
