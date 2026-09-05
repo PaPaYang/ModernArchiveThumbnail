@@ -13,25 +13,30 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    - name: Install Visual C++ ATL
+      run: |
+        $vsPath = (vswhere -latest -property installationPath)
+        $installer = "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vs_installer.exe"
+        Write-Host "Installing ATL into $vsPath..."
+        Start-Process -FilePath $installer -ArgumentList "modify --installPath `"$vsPath`" --add Microsoft.VisualStudio.Component.VC.ATL --quiet --norestart" -Wait
+      shell: powershell
+
     - name: Setup MSVC
       uses: ilammy/msvc-dev-cmd@v1
 
     - name: Install NSIS
       run: choco install nsis --no-progress
 
-    # [수정됨] 여러 DLL로 나누지 않고 하나의 덩어리(static)로 받습니다.
     - name: Build dependencies with vcpkg
       run: |
         vcpkg install libarchive[bzip2,lz4,lzma,zstd,crypto]:x64-windows-static
         vcpkg integrate install
       shell: cmd
 
-    # [수정됨] 정적 빌드 옵션(VcpkgTriplet=x64-windows-static)을 추가합니다.
     - name: Build C++ Solution
       run: msbuild ModernArchiveThumbnail.sln /p:Configuration=Release /p:Platform=x64 /p:VcpkgTriplet=x64-windows-static
       shell: cmd
 
-    # [수정됨] 이제 외부 DLL이 생성되지 않으므로, 우리가 만든 썸네일러 DLL 1개만 복사합니다.
     - name: Gather DLL for NSIS
       run: |
         copy "x64\Release\ModernArchiveThumbnail.dll" .
