@@ -13,8 +13,10 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Add MSBuild to PATH
-      uses: microsoft/setup-msbuild@v2
+    - name: Setup MSVC Developer Command Prompt
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: x64
 
     - name: Install NSIS
       run: choco install nsis --no-progress
@@ -25,23 +27,12 @@ jobs:
         vcpkg integrate install
       shell: cmd
 
-    # MSBuild가 절대 무시할 수 없도록 강제로 ATL 헤더 및 라이브러리 경로를 주입합니다.
-    - name: Force ATL Include and Library Paths
-      run: |
-        $xml = @"
-        <Project>
-          <PropertyGroup>
-            <UseOfAtl>Static</UseOfAtl>
-            <IncludePath>`$(VC_ATLMFC_IncludePath);`$(IncludePath)</IncludePath>
-            <LibraryPath>`$(VC_ATLMFC_LibraryPath_x64);`$(LibraryPath)</LibraryPath>
-          </PropertyGroup>
-        </Project>
-        "@
-        Set-Content -Path Directory.Build.targets -Value $xml
-      shell: powershell
-
     - name: Build C++ Solution
-      run: msbuild ModernArchiveThumbnail.sln /p:Configuration=Release /p:Platform=x64
+      run: |
+        set INCLUDE=%VCToolsInstallDir%atlmfc\include;%INCLUDE%
+        set LIB=%VCToolsInstallDir%atlmfc\lib\x64;%LIB%
+        msbuild ModernArchiveThumbnail.sln /p:Configuration=Release /p:Platform=x64 /p:UseOfAtl=Static
+      shell: cmd
 
     - name: Gather all DLLs for NSIS
       run: |
