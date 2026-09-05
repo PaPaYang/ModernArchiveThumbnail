@@ -1,5 +1,6 @@
 #include <windows.h>
 #include <shlwapi.h>
+#include <new> // 누락되었던 헤더 추가
 #include "ClassFactory.h"
 
 // CLSID for ModernArchiveThumbnail: {E5D74646-B8A3-E066-8345-603E2B1637A3}

@@ -1,5 +1,6 @@
 #include "ClassFactory.h"
 #include "ThumbnailProvider.h"
+#include <new> // 누락되었던 헤더 추가
 
 extern long g_cDllRef;
 
