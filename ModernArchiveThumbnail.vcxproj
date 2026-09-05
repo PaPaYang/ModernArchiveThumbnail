@@ -18,7 +18,6 @@
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
-    <!-- [복구됨] ATL 뼈대를 찾기 위한 필수 옵션 -->
     <UseOfAtl>Static</UseOfAtl>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
@@ -44,7 +43,10 @@
       <SDLCheck>true</SDLCheck>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
+      <!-- 정적 빌드 옵션 -->
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <!-- ATL 강제 경로 주입 -->
+      <AdditionalIncludeDirectories>$(VCToolsInstallDir)atlmfc\include;$(IntDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Midl>
       <MkTypLibCompatible>false</MkTypLibCompatible>
@@ -56,11 +58,11 @@
       <TypeLibraryName>$(IntDir)ModernArchiveThumbnail.tlb</TypeLibraryName>
       <DllDataFileName />
       <ValidateAllParameters>true</ValidateAllParameters>
-      <AdditionalIncludeDirectories>$(IntDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(VCToolsInstallDir)atlmfc\include;$(IntDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </Midl>
     <ResourceCompile>
       <Culture>0x0412</Culture>
-      <AdditionalIncludeDirectories>$(IntDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(VCToolsInstallDir)atlmfc\include;$(IntDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ResourceCompile>
     <Link>
@@ -69,7 +71,8 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <RegisterOutput>false</RegisterOutput>
-      <!-- [유지됨] 정적 빌드에 필요한 윈도우 기본 네트워크/암호화 라이브러리 연결 -->
+      <!-- ATL 라이브러리 강제 주입 및 정적 링킹 필수 파일 연결 -->
+      <AdditionalLibraryDirectories>$(VCToolsInstallDir)atlmfc\lib\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>ws2_32.lib;crypt32.lib;xmllite.lib;bcrypt.lib;secur32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
