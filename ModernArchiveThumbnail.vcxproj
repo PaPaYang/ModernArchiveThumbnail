@@ -43,6 +43,8 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <RegisterOutput>false</RegisterOutput>
+      <!-- [추가됨] 누락되었던 윈도우 기본 네트워크/암호화 라이브러리 명시적 연결 -->
+      <AdditionalDependencies>ws2_32.lib;crypt32.lib;xmllite.lib;bcrypt.lib;secur32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
