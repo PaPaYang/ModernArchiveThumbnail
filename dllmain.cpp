@@ -1,6 +1,6 @@
 #include <windows.h>
 #include <shlwapi.h>
-#include <new> // 누락되었던 헤더 추가
+#include <new>
 #include "ClassFactory.h"
 
 // CLSID for ModernArchiveThumbnail: {E5D74646-B8A3-E066-8345-603E2B1637A3}
@@ -23,6 +23,50 @@ STDAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID* ppv) {
     pClassFactory->Release(); return hr;
 }
 
-// NSIS가 등록을 담당하므로 레지스트리 작성 코드는 비워둡니다.
-STDAPI DllRegisterServer(void) { return S_OK; }
-STDAPI DllUnregisterServer(void) { return S_OK; }
+// 안전한 레지스트리 등록 도우미 함수
+HRESULT SetHKCRRegistryKeyAndValue(PCWSTR pszSubKey, PCWSTR pszValueName, PCWSTR pszData) {
+    HKEY hKey = NULL;
+    HRESULT hr = HRESULT_FROM_WIN32(RegCreateKeyExW(HKEY_CLASSES_ROOT, pszSubKey, 0, NULL, REG_OPTION_NON_VOLATILE, KEY_WRITE, NULL, &hKey, NULL));
+    if (SUCCEEDED(hr)) {
+        if (pszData != NULL) {
+            DWORD cbData = lstrlenW(pszData) * sizeof(*pszData);
+            hr = HRESULT_FROM_WIN32(RegSetValueExW(hKey, pszValueName, 0, REG_SZ, (const BYTE*)pszData, cbData));
+        }
+        RegCloseKey(hKey);
+    }
+    return hr;
+}
+
+// 설치 시(regsvr32) 탐색기에 썸네일러 등록
+STDAPI DllRegisterServer(void) {
+    WCHAR szModule[MAX_PATH];
+    if (GetModuleFileNameW(g_hInst, szModule, ARRAYSIZE(szModule)) == 0) return HRESULT_FROM_WIN32(GetLastError());
+
+    // 1. COM 객체 등록
+    SetHKCRRegistryKeyAndValue(L"CLSID\\{E5D74646-B8A3-E066-8345-603E2B1637A3}", NULL, L"ModernArchiveThumbnail");
+    SetHKCRRegistryKeyAndValue(L"CLSID\\{E5D74646-B8A3-E066-8345-603E2B1637A3}\\InprocServer32", NULL, szModule);
+    SetHKCRRegistryKeyAndValue(L"CLSID\\{E5D74646-B8A3-E066-8345-603E2B1637A3}\\InprocServer32", L"ThreadingModel", L"Apartment");
+
+    // 2. 압축 파일 확장자에 썸네일 기능만 연결 (기본 연결 프로그램 유지)
+    const WCHAR* exts[] = { L".zip", L".rar", L".7z", L".cbz", L".cbr", L".tar", L".gz", L".bz2", L".lzma", L".zstd" };
+    for (int i = 0; i < ARRAYSIZE(exts); i++) {
+        WCHAR szKey[256];
+        wsprintfW(szKey, L"%s\\shellex\\{e357fccd-a995-4576-b01f-234630154e96}", exts[i]);
+        SetHKCRRegistryKeyAndValue(szKey, NULL, L"{E5D74646-B8A3-E066-8345-603E2B1637A3}");
+    }
+    SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, NULL, NULL);
+    return S_OK;
+}
+
+// 삭제 시 등록 해제
+STDAPI DllUnregisterServer(void) {
+    RegDeleteTreeW(HKEY_CLASSES_ROOT, L"CLSID\\{E5D74646-B8A3-E066-8345-603E2B1637A3}");
+    const WCHAR* exts[] = { L".zip", L".rar", L".7z", L".cbz", L".cbr", L".tar", L".gz", L".bz2", L".lzma", L".zstd" };
+    for (int i = 0; i < ARRAYSIZE(exts); i++) {
+        WCHAR szKey[256];
+        wsprintfW(szKey, L"%s\\shellex\\{e357fccd-a995-4576-b01f-234630154e96}", exts[i]);
+        RegDeleteTreeW(HKEY_CLASSES_ROOT, szKey);
+    }
+    SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, NULL, NULL);
+    return S_OK;
+}
