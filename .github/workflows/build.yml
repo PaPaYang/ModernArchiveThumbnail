@@ -13,7 +13,7 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # [핵심 부활] 깃허브 서버에 누락된 Visual C++ ATL 컴포넌트를 설치합니다.
+    # 1. GitHub 서버에 누락된 Visual C++ ATL 컴포넌트 강제 설치
     - name: Install Visual C++ ATL
       run: |
         $vsPath = (vswhere -latest -property installationPath)
@@ -22,8 +22,12 @@ jobs:
         Start-Process -FilePath $installer -ArgumentList "modify --installPath `"$vsPath`" --add Microsoft.VisualStudio.Component.VC.ATL --quiet --norestart" -Wait
       shell: powershell
 
-    - name: Add MSBuild to PATH
-      uses: microsoft/setup-msbuild@v2
+    # 2. ilammy/msvc-dev-cmd 플러그인을 사용하여 개발자 명령 프롬프트 환경 구성
+    # 이 플러그인은 방금 설치된 ATL 라이브러리를 포함하여 컴파일에 필요한 모든 올바른 경로를 찾아냅니다.
+    - name: Setup MSVC Developer Command Prompt
+      uses: ilammy/msvc-dev-cmd@v1
+
+    # 주의: microsoft/setup-msbuild@v2 는 환경을 꼬이게 만들 수 있으므로 제거합니다!
 
     - name: Install NSIS
       run: choco install nsis --no-progress
@@ -34,8 +38,10 @@ jobs:
         vcpkg integrate install
       shell: cmd
 
+    # 3. 개발자 명령 프롬프트 환경 내부에서 MSBuild 실행
     - name: Build C++ Solution
       run: msbuild ModernArchiveThumbnail.sln /p:Configuration=Release /p:Platform=x64
+      shell: cmd
 
     - name: Gather all DLLs for NSIS
       run: |
