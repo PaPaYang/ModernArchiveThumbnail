@@ -13,15 +13,6 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # [추가됨] 깃허브 서버에 누락된 Visual C++ ATL 컴포넌트를 강제로 설치합니다.
-    - name: Install C++ ATL Component
-      run: |
-        $vsPath = (vswhere -latest -property installationPath)
-        $installer = "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vs_installer.exe"
-        Write-Host "Installing ATL into $vsPath..."
-        Start-Process -FilePath $installer -ArgumentList "modify --installPath `"$vsPath`" --add Microsoft.VisualStudio.Component.VC.ATL --quiet --norestart" -Wait
-      shell: powershell
-
     - name: Add MSBuild to PATH
       uses: microsoft/setup-msbuild@v2
 
@@ -33,6 +24,21 @@ jobs:
         vcpkg install libarchive[bzip2,lz4,lzma,zstd,crypto]:x64-windows
         vcpkg integrate install
       shell: cmd
+
+    # MSBuild가 절대 무시할 수 없도록 강제로 ATL 헤더 및 라이브러리 경로를 주입합니다.
+    - name: Force ATL Include and Library Paths
+      run: |
+        $xml = @"
+        <Project>
+          <PropertyGroup>
+            <UseOfAtl>Static</UseOfAtl>
+            <IncludePath>`$(VC_ATLMFC_IncludePath);`$(IncludePath)</IncludePath>
+            <LibraryPath>`$(VC_ATLMFC_LibraryPath_x64);`$(LibraryPath)</LibraryPath>
+          </PropertyGroup>
+        </Project>
+        "@
+        Set-Content -Path Directory.Build.targets -Value $xml
+      shell: powershell
 
     - name: Build C++ Solution
       run: msbuild ModernArchiveThumbnail.sln /p:Configuration=Release /p:Platform=x64
