@@ -13,7 +13,15 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # [수정됨] 존재하지 않는 v4 대신, 기존에 잘 작동하던 v2로 원상 복구했습니다.
+    # [핵심 부활] 깃허브 서버에 누락된 Visual C++ ATL 컴포넌트를 설치합니다.
+    - name: Install Visual C++ ATL
+      run: |
+        $vsPath = (vswhere -latest -property installationPath)
+        $installer = "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vs_installer.exe"
+        Write-Host "Installing ATL into $vsPath..."
+        Start-Process -FilePath $installer -ArgumentList "modify --installPath `"$vsPath`" --add Microsoft.VisualStudio.Component.VC.ATL --quiet --norestart" -Wait
+      shell: powershell
+
     - name: Add MSBuild to PATH
       uses: microsoft/setup-msbuild@v2
 
