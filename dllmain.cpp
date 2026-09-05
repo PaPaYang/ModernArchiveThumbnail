@@ -1,5 +1,6 @@
 #include <windows.h>
 #include <shlwapi.h>
+#include <shlobj.h> // [추가됨] 탐색기 새로고침(SHChangeNotify) 기능을 위한 헤더
 #include <new>
 #include "ClassFactory.h"
 
@@ -29,7 +30,8 @@ HRESULT SetHKCRRegistryKeyAndValue(PCWSTR pszSubKey, PCWSTR pszValueName, PCWSTR
     HRESULT hr = HRESULT_FROM_WIN32(RegCreateKeyExW(HKEY_CLASSES_ROOT, pszSubKey, 0, NULL, REG_OPTION_NON_VOLATILE, KEY_WRITE, NULL, &hKey, NULL));
     if (SUCCEEDED(hr)) {
         if (pszData != NULL) {
-            DWORD cbData = lstrlenW(pszData) * sizeof(*pszData);
+            // [수정됨] 널 종료 문자(+1)를 포함하여 안전하게 레지스트리에 기록하도록 수정
+            DWORD cbData = (lstrlenW(pszData) + 1) * sizeof(*pszData);
             hr = HRESULT_FROM_WIN32(RegSetValueExW(hKey, pszValueName, 0, REG_SZ, (const BYTE*)pszData, cbData));
         }
         RegCloseKey(hKey);
@@ -54,6 +56,8 @@ STDAPI DllRegisterServer(void) {
         wsprintfW(szKey, L"%s\\shellex\\{e357fccd-a995-4576-b01f-234630154e96}", exts[i]);
         SetHKCRRegistryKeyAndValue(szKey, NULL, L"{E5D74646-B8A3-E066-8345-603E2B1637A3}");
     }
+    
+    // 탐색기 아이콘 새로고침
     SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, NULL, NULL);
     return S_OK;
 }
@@ -67,6 +71,8 @@ STDAPI DllUnregisterServer(void) {
         wsprintfW(szKey, L"%s\\shellex\\{e357fccd-a995-4576-b01f-234630154e96}", exts[i]);
         RegDeleteTreeW(HKEY_CLASSES_ROOT, szKey);
     }
+    
+    // 탐색기 아이콘 새로고침
     SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, NULL, NULL);
     return S_OK;
 }
