@@ -19,19 +19,21 @@ jobs:
     - name: Install NSIS
       run: choco install nsis --no-progress
 
+    # [핵심] 여러 개의 DLL을 만들지 않고, 하나의 Static 라이브러리로 통합 설치
     - name: Build dependencies with vcpkg
       run: |
-        vcpkg install libarchive[bzip2,lz4,lzma,zstd,crypto]:x64-windows
+        vcpkg install libarchive[bzip2,lz4,lzma,zstd,crypto]:x64-windows-static
         vcpkg integrate install
       shell: cmd
 
+    # Static 라이브러리(vcpkg)를 프로젝트에 포함시켜 컴파일하도록 설정
     - name: Build C++ Solution
-      run: msbuild ModernArchiveThumbnail.sln /p:Configuration=Release /p:Platform=x64
+      run: msbuild ModernArchiveThumbnail.sln /p:Configuration=Release /p:Platform=x64 /p:VcpkgTriplet=x64-windows-static
       shell: cmd
 
-    - name: Gather all DLLs for NSIS
+    # 외부 DLL이 필요 없으므로, 우리가 만든 썸네일러 DLL 딱 1개만 복사
+    - name: Gather DLL for NSIS
       run: |
-        copy "C:\vcpkg\installed\x64-windows\bin\*.dll" .
         copy "x64\Release\ModernArchiveThumbnail.dll" .
       shell: cmd
 
